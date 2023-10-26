@@ -1,16 +1,21 @@
 package com.ll;
 
+import com.fasterxml.jackson.core.exc.StreamWriteException;
+import com.fasterxml.jackson.databind.DatabindException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
 
 class quote {
 
     private int quoteNum;
     private String quote;
     private String writer;
-
+    public quote() {
+        // 기본 생성자
+    }
     public quote(int quoteNum, String quote, String writer) {
         this.quoteNum = quoteNum;
         this.quote = quote;
@@ -37,16 +42,29 @@ class quote {
         this.writer = writer;
     }
 
+    @Override
+    public String toString() {
+        return "Quote{" + "quoteNum=" + quoteNum +
+                ", quote='" + quote + '\'' +
+                ", writer='" + writer + '\'' +
+                '}';
+    }
 }
 
 public class Main {
-    private static final String file = "C:\\Users\\82107\\quotedata.txt";
+    public String hello() {
+        return "hello world";
+    }
+
+    private static final String file = "C:\\Users\\82107\\data.json";
+    private static List<quote> quoteList;
+    private static int quoteNum;
 
     public static void main(String[] args) throws IOException {
         System.out.println("== 명언 앱 ==");
 
-        List<quote> quoteList = callData();
-        int quoteNum = nextQuoteNum(quoteList);
+        quoteList = callData();
+        quoteNum = nextQuoteNum(quoteList);
         BufferedReader sc = new BufferedReader(new InputStreamReader(System.in));
 
         while (true) {
@@ -60,7 +78,6 @@ public class Main {
                     String quote = sc.readLine();
                     System.out.print("작가 : ");
                     String writer = sc.readLine();
-
                     quote quoteCreate = new quote(quoteNum, quote, writer);
                     quoteList.add(0, quoteCreate);
                     quoteNum++;
@@ -88,26 +105,20 @@ public class Main {
                     System.out.print("?id=");
                     int modNum = Integer.parseInt(sc.readLine());
                     boolean update = false;
-
                     for (int i = 0; i < quoteList.size(); i++) {
-
                         if (quoteList.get(i).getQuoteNum() == modNum) {
                             System.out.println("명언(기존) : " + quoteList.get(i).getQuote());
                             System.out.print("명언 : ");
                             String newQuote = sc.readLine();
-
                             if (!newQuote.isEmpty()) {
                                 quoteList.get(i).setQuote(newQuote);
                             }
-
                             System.out.println("작가(기존) : " + quoteList.get(i).getWriter());
                             System.out.print("작가 : ");
                             String newWriter = sc.readLine();
-
                             if (!newWriter.isEmpty()) {
                                 quoteList.get(i).setWriter(newWriter);
                             }
-
                             update = true;
                             System.out.println(modNum + "번 명언이 수정되었습니다.");
                             break;
@@ -121,20 +132,17 @@ public class Main {
                 case "목록":
                     System.out.println("번호 / 작가 / 명언");
                     System.out.println("----------------------");
-
                     for (quote quoteRead : quoteList) {
-                        System.out.println(quoteRead.getQuoteNum() + " / "
-                                + quoteRead.getWriter()
-                                + " / " + quoteRead.getQuote());
+                        System.out.println(quoteRead.getQuoteNum() + " / " + quoteRead.getWriter() + " / " + quoteRead.getQuote());
                     }
                     break;
 
                 case "빌드":
-                    System.out.println("data.json파일의 내용이 갱신되었습니다.");
-
+                    saveData();
+                    System.out.println("data.json 파일의 내용이 갱신되었습니다.");
 
                 case "종료":
-                    saveData(quoteList);
+                    saveData();
                     return;
 
             }
@@ -150,41 +158,34 @@ public class Main {
         }
         return max + 1;
     }
-
-    // 데이터 파일에서 명언 데이터를 읽어오는 함수
+    //quoteList를 초기화하여 명언 데이터를 보유할 목록을 생성
+//ObjectMapper를 사용하여 JSON 파일을 읽기 위한 객체를 생성
+//JSON 파일을 읽어오기 위해 파일 경로로부터 File 객체를 만들고, 파일이 존재하는지 확인
+//JSON 파일에서 명언 데이터를 읽어온 후, quote[] quotes 배열로 저장
+//읽어온 명언 데이터를 명언 목록에 추가
+//읽어온 명언 목록을 반환
     private static List<quote> callData() {
         List<quote> quoteList = new ArrayList<>();
-
-        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-            String line;
-            // 파일을 한 줄씩 읽어옵니다.
-            while ((line = reader.readLine()) != null) {
-                // 각 줄을 쉼표(,)로 분리하여 명언 번호, 명언 내용, 작가 정보를 추출합니다.
-                String[] parts = line.split(",");
-                if (parts.length == 3) {
-                    // 데이터를 추출하여 새 명언 객체를 생성하고 명언 목록에 추가합니다.
-                    int quoteNum = Integer.parseInt(parts[0]);
-                    String quote = parts[1];
-                    String writer = parts[2];
-                    quote quoteCall = new quote(quoteNum, quote, writer);
-                    quoteList.add(quoteCall);
-                }
+        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+            File jsonFile = new File(file);
+            if (jsonFile.exists()) {
+                quote[] quotes = objectMapper.readValue(jsonFile, quote[].class);
+                quoteList.addAll(List.of(quotes));
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return quoteList; // 읽어온 명언 목록을 반환합니다.
+        return quoteList; // JSON 파일에서 읽어온 명언 목록을 반환
     }
-
-    // 명언 데이터를 파일에 저장하는 함수
-    private static void saveData(List<quote> quoteList) {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
-            for (quote quoteSave : quoteList) {
-                // 각 명언 객체의 정보를 CSV 형식으로 파일에 저장합니다.
-                String line = String.format("%d,%s,%s%n", quoteSave.getQuoteNum(),
-                        quoteSave.getQuote(), quoteSave.getWriter());
-                writer.write(line);
-            }
+    //ObjectMapper를 사용하여 JSON 파일에 데이터를 저장하기 위한 객체를 생성
+//objectMapper.writerWithDefaultPrettyPrinter().writeValue(new File(file), quoteList)를 사용하여
+//명언 목록을 JSON 파일에 저장
+//저장할 때 데이터를 들여쓰기된 형식으로 저장
+    private static void saveData() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+            objectMapper.writerWithDefaultPrettyPrinter().writeValue(new File(file), quoteList);
         } catch (IOException e) {
             e.printStackTrace();
         }
